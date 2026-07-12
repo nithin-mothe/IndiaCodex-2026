@@ -1,0 +1,52 @@
+{
+  "name": "trustpay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TrustPay Protocol monorepo foundation for Cardano-native decentralized escrow infrastructure.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "workers/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc --build --pretty && npm run typecheck --workspace @trustpay/web",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "test": "vitest run",
+    "db:generate": "prisma generate --schema database/schema.prisma",
+    "db:migrate": "prisma migrate deploy --schema database/schema.prisma",
+    "db:seed": "tsx database/seed/seed.ts",
+    "validate:env": "node scripts/validate-env.mjs"
+    
+  },
+  "prisma": {
+    "schema": "database/schema.prisma",
+    "seed": "tsx database/seed/seed.ts"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@eslint/js": "^9.31.0",
+    "@types/node": "^24.0.14",
+    "eslint": "^9.31.0",
+    "eslint-config-prettier": "^10.1.5",
+    "husky": "^9.1.7",
+    "prettier": "^3.6.2",
+    "prisma": "^6.12.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.37.0",
+    "vitest": "^3.2.4",
+    "zod": "^4.0.5"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}

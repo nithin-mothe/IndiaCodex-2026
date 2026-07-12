@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Validate environment contract
+        run: npm run validate:env
+        env:
+          NODE_ENV: test
+          TRUSTPAY_ENV: testing
+          LOG_LEVEL: info
+          DATABASE_URL: postgresql://trustpay:trustpay@localhost:5432/trustpay
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ci-secret-with-enough-length
+          CARDANO_NETWORK: preview
+          CARDANO_PROVIDER_URL: https://preview.example.cardano-provider.invalid
+          AI_PRIMARY_PROVIDER: openai
+          AI_OPENAI_API_KEY: ci-openai-key
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format
+        run: npm run format
+
+      - name: Test
+        run: npm test

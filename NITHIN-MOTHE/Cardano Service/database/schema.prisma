@@ -1,0 +1,300 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  GUEST
+  BUYER
+  SELLER
+  DEVELOPER
+  ARBITRATOR
+  ADMINISTRATOR
+}
+
+enum EscrowStatus {
+  DRAFT
+  PENDING_SELLER
+  AWAITING_DEPOSIT
+  LOCKED
+  IN_PROGRESS
+  MILESTONE_PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  DISPUTED
+  EXPIRED
+}
+
+enum NotificationType {
+  ESCROW
+  DISPUTE
+  PAYMENT
+  WEBHOOK
+  SYSTEM
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  AUTHENTICATE
+  AUTHORIZE
+  WEBHOOK_DELIVER
+  QUEUE_JOB
+}
+
+model User {
+  id            String         @id @default(uuid()) @db.Uuid
+  email         String         @unique
+  displayName   String?
+  role          UserRole       @default(GUEST)
+  walletAddress String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  apiKeys       ApiKey[]
+  auditLogs     AuditLog[]
+  disputes      Dispute[]      @relation("DisputeOpeners")
+  notifications Notification[]
+  wallets       Wallet[]
+  buyerEscrows  Escrow[]       @relation("BuyerEscrows")
+  sellerEscrows Escrow[]       @relation("SellerEscrows")
+
+  @@index([role])
+  @@index([walletAddress])
+  @@index([deletedAt])
+}
+
+model Wallet {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  address    String    @unique
+  network    String    @default("preview")
+  label      String?
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([network])
+  @@index([deletedAt])
+}
+
+model Escrow {
+  id             String            @id @default(uuid()) @db.Uuid
+  title          String
+  description    String?
+  status         EscrowStatus      @default(DRAFT)
+  buyerId        String            @db.Uuid
+  sellerId       String?           @db.Uuid
+  amountLovelace BigInt
+  currency       String            @default("ADA")
+  contractHash   String?
+  chainTxHash    String?
+  lockedAt       DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deletedAt      DateTime?
+  buyer          User              @relation("BuyerEscrows", fields: [buyerId], references: [id])
+  seller         User?             @relation("SellerEscrows", fields: [sellerId], references: [id])
+  attachments    Attachment[]
+  milestones     EscrowMilestone[]
+  disputes       Dispute[]
+  certificates   NftCertificate[]
+  events         EscrowEvent[]
+  transactions   Transaction[]
+
+  @@index([status])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([chainTxHash])
+  @@index([deletedAt])
+}
+
+model EscrowMilestone {
+  id             String    @id @default(uuid()) @db.Uuid
+  escrowId       String    @db.Uuid
+  title          String
+  description    String?
+  amountLovelace BigInt
+  sequence       Int
+  acceptedAt     DateTime?
+  releasedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+  escrow         Escrow    @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+
+  @@unique([escrowId, sequence])
+  @@index([deletedAt])
+}
+
+model Dispute {
+  id         String    @id @default(uuid()) @db.Uuid
+  escrowId   String    @db.Uuid
+  openedById String    @db.Uuid
+  reason     String
+  status     String    @default("OPEN")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  escrow     Escrow    @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  openedBy   User      @relation("DisputeOpeners", fields: [openedById], references: [id])
+
+  @@index([escrowId])
+  @@index([openedById])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([type])
+}
+
+model ApiKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  name       String
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([revokedAt])
+}
+
+model WebhookEndpoint {
+  id          String            @id @default(uuid()) @db.Uuid
+  url         String
+  secretHash  String
+  description String?
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  deliveries  WebhookDelivery[]
+
+  @@index([active])
+  @@index([deletedAt])
+}
+
+model WebhookDelivery {
+  id          String          @id @default(uuid()) @db.Uuid
+  endpointId  String          @db.Uuid
+  eventType   String
+  payload     Json
+  status      String          @default("PENDING")
+  attempts    Int             @default(0)
+  lastError   String?
+  createdAt   DateTime        @default(now())
+  deliveredAt DateTime?
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([endpointId, status])
+}
+
+model NftCertificate {
+  id           String   @id @default(uuid()) @db.Uuid
+  escrowId     String   @db.Uuid
+  policyId     String?
+  assetName    String?
+  metadataUri  String?
+  mintedTxHash String?
+  createdAt    DateTime @default(now())
+  escrow       Escrow   @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+
+  @@index([escrowId])
+  @@index([policyId])
+}
+
+model EscrowEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  escrowId  String   @db.Uuid
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+  escrow    Escrow   @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+
+  @@index([escrowId, createdAt])
+  @@index([type])
+}
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  actorId    String?     @db.Uuid
+  action     AuditAction
+  resource   String
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+  actor      User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+}
+
+model Transaction {
+  id             String    @id @default(uuid()) @db.Uuid
+  escrowId       String    @db.Uuid
+  txHash         String    @unique
+  type           String
+  amountLovelace BigInt?
+  status         String    @default("PENDING")
+  confirmedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  escrow         Escrow    @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+
+  @@index([escrowId])
+  @@index([status])
+  @@index([type])
+}
+
+model Attachment {
+  id          String    @id @default(uuid()) @db.Uuid
+  escrowId    String    @db.Uuid
+  fileName    String
+  contentType String
+  url         String
+  sizeBytes   Int
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  escrow      Escrow    @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+
+  @@index([escrowId])
+  @@index([deletedAt])
+}
+
+model AnalyticsSnapshot {
+  id        String   @id @default(uuid()) @db.Uuid
+  period    String
+  metrics   Json
+  createdAt DateTime @default(now())
+
+  @@index([period, createdAt])
+}

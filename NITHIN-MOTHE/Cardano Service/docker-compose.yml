@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: trustpay
+      POSTGRES_USER: trustpay
+      POSTGRES_PASSWORD: trustpay
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trustpay -d trustpay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - trustpay_postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - trustpay_redis:/data
+
+volumes:
+  trustpay_postgres:
+  trustpay_redis:

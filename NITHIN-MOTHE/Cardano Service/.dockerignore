@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.next
+.turbo
+.vercel
+.git
+.env
+.env.*
+!.env.example
+*.log
+Dockerfile.local

@@ -1,0 +1,32 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/config"
+    },
+    {
+      "path": "./packages/types"
+    },
+    {
+      "path": "./packages/utils"
+    },
+    {
+      "path": "./packages/sdk"
+    },
+    {
+      "path": "./apps/api"
+    },
+    {
+      "path": "./database"
+    },
+    {
+      "path": "./workers/notifications"
+    },
+    {
+      "path": "./workers/analytics"
+    },
+    {
+      "path": "./workers/blockchain-sync"
+    }
+  ]
+}
