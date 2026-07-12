@@ -209,3 +209,4 @@ TrustPay aims to make blockchain-powered digital transactions secure, transparen
 
 
 vide link : https://drive.google.com/file/d/199TztD2SHQfHgq_DC6ct5NhIx6RmejOo/view?usp=drivesdk
+ppt link : https://canva.link/ttk1t5n34znnwdr
